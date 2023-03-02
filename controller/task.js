@@ -1,4 +1,9 @@
 const taskDb = require("../models/task");
+const {
+  ReasonPhrases,
+  StatusCodes,
+
+} = require("http-status-codes");
 
 const createTask = async (req, res) => {
   const { title } = req.body;
@@ -6,10 +11,10 @@ const createTask = async (req, res) => {
     return res.status(403).json({ message: "Title is required" });
   }
   try {
-    const createTask = await taskDb.create({ title });
+    const createTaskInfo = await taskDb.create({ title });
     return res.status(201).json({
       message: "task created successfully",
-      data: createTask._doc,
+      data: createTaskInfo._doc,
     });
   } catch (e) {
     return res.status(500).json({
@@ -81,17 +86,46 @@ const toggleTask = async (req, res) => {
 
 const deleteTaskById = async (req, res) => {
   const id = req.params.id;
-  try {
-    const task = await taskDb.findByIdAndDelete(id);
-    return res
-      .status(201)
-      .json({ data: task, message: "task deleted successfully" });
-  } catch (e) {
-    return res.status(500).json({
-      error: e,
-      message: "Server Error",
+  if (!id) {
+    return res.status(StatusCodes.BAD_REQUEST).json({
+      message: ReasonPhrases.BAD_REQUEST,
     });
   }
+  try {
+    await taskDb.findByIdAndDelete(id);
+    return res.status(StatusCodes.NO_CONTENT).json({
+      message: ReasonPhrases.NO_CONTENT,
+    });
+  } catch (e) {
+    res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
+      message: ReasonPhrases.INTERNAL_SERVER_ERROR,
+      error: e,
+    });
+  }
+};
+
+const updateTask = async (req, res) => {
+  const title = req.body.title;
+  const id = req.params.id;
+
+  if (!id || !title) {
+    return res.status(StatusCodes.BAD_REQUEST).json({
+      message: "All fields are required",
+    });
+  }
+
+  try {
+    const updated = await taskDb.findByIdAndUpdate(id, {
+      $set: {
+        title,
+      },
+    });
+
+    return res.status(StatusCodes.OK).json({
+      message: ReasonPhrases.OK,
+      data: { ...updated._doc, title },
+    });
+  } catch (e) {}
 };
 
 module.exports = {
@@ -100,4 +134,5 @@ module.exports = {
   taskById,
   toggleTask,
   deleteTaskById,
+  updateTask,
 };
